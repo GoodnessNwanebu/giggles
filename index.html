@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giggle's Joke Factory</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8E44AD">
+</head>
+<body>
+
+    <div id="app-container">
+        <header>
+            <h1>Giggle's Joke Factory</h1>
+        </header>
+
+        <main>
+            <div id="giggles-container">
+                <!-- Giggles will be created with CSS -->
+                <div id="giggles">
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                    <div class="mouth"></div>
+                    <div class="antenna antenna-left"></div>
+                    <div class="antenna antenna-right"></div>
+                </div>
+            </div>
+
+            <div id="joke-card">
+                <p id="joke-setup"></p>
+                <p id="joke-punchline"></p>
+            </div>
+
+            <button id="get-joke-btn">Ask Giggles for a Joke!</button>
+
+            <div id="groan-o-meter-container">
+                <label for="rating">The Groan-o-Meter</label>
+                <span>😂</span>
+                <input type="range" id="rating" min="0" max="100" value="50">
+                <span>😫</span>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

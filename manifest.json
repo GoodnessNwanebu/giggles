@@ -1,0 +1,21 @@
+{
+    "name": "Giggle's Joke Factory",
+    "short_name": "Giggles",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#3498DB",
+    "theme_color": "#8E44AD",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/icons/icon-192x192.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ]
+}
