@@ -1,21 +1,37 @@
 {
     "name": "Giggle's Joke Factory",
     "short_name": "Giggles",
+    "description": "A fun joke app featuring the adorable Giggles monster",
     "start_url": "/index.html",
     "display": "standalone",
     "background_color": "#3498DB",
     "theme_color": "#8E44AD",
     "orientation": "portrait-primary",
+    "scope": "/",
     "icons": [
         {
-            "src": "/icons/icon-192x192.png",
+            "src": "/icon/icon-72x72.png",
             "type": "image/png",
-            "sizes": "192x192"
+            "sizes": "72x72",
+            "purpose": "any"
         },
         {
-            "src": "/icons/icon-512x512.png",
+            "src": "/icon/icon-96x96.png",
             "type": "image/png",
-            "sizes": "512x512"
+            "sizes": "96x96",
+            "purpose": "any"
+        },
+        {
+            "src": "/icon/icon-192x192.png",
+            "type": "image/png",
+            "sizes": "192x192",
+            "purpose": "any"
+        },
+        {
+            "src": "/icon/icon-512x512.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "any"
         }
     ]
 }

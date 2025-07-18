@@ -1,12 +1,14 @@
-const CACHE_NAME = 'giggles-joke-factory-v1';
+const CACHE_NAME = 'giggles-joke-factory-v2';
 const urlsToCache = [
     '/',
     '/index.html',
     '/style.css',
     '/script.js',
     '/manifest.json',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png',
+    '/icon/icon-72x72.png',
+    '/icon/icon-96x96.png',
+    '/icon/icon-192x192.png',
+    '/icon/icon-512x512.png',
     'https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap',
     'https://fonts.gstatic.com/s/fredokaone/v8/k3kUo8kEI-tA1RRcTZGmTmHBAA.woff2' // Font file
 ];

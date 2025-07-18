@@ -33,6 +33,19 @@ body {
 h1 {
     color: var(--monster-color);
     text-shadow: 2px 2px 0 var(--card-color);
+    margin-bottom: 0.5rem;
+}
+
+#joke-counter {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    opacity: 0.8;
+    margin-bottom: 1rem;
+}
+
+#joke-count {
+    font-weight: bold;
+    color: var(--monster-color);
 }
 
 /* --- Giggles The Monster --- */
