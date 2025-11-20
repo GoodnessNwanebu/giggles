@@ -3,6 +3,9 @@ node_modules/
 package-lock.json
 yarn.lock
 
+# Build output
+public/
+
 # Environment variables
 .env
 .env.local
