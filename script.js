@@ -10,60 +10,11 @@ const giggles = document.getElementById('giggles');
 let usedJokes = new Set();
 let currentJoke = null;
 
-// Multiple joke APIs for variety and reliability
-const JOKE_APIS = [
-    {
-        name: 'JokeAPI',
-        url: 'https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,religious,political,racist,sexist,explicit',
-        parser: (data) => {
-            if (data.type === 'single') {
-                return { setup: data.joke, punchline: '' };
-            } else if (data.type === 'twopart') {
-                return { setup: data.setup, punchline: data.punchline || data.delivery };
-            }
-            return null;
-        }
-    },
-    {
-        name: 'DadJokes',
-        url: 'https://icanhazdadjoke.com/',
-        headers: { 'Accept': 'application/json' },
-        parser: (data) => {
-            return { setup: data.joke, punchline: '' };
-        }
-    },
-    {
-        name: 'ChuckNorris',
-        url: 'https://api.chucknorris.io/jokes/random',
-        parser: (data) => {
-            return { setup: data.value, punchline: '' };
-        }
-    },
-    {
-        name: 'JokeAPIProgramming',
-        url: 'https://v2.jokeapi.dev/joke/Programming?blacklistFlags=nsfw,religious,political,racist,sexist,explicit',
-        parser: (data) => {
-            if (data.type === 'single') {
-                return { setup: data.joke, punchline: '' };
-            } else if (data.type === 'twopart') {
-                return { setup: data.setup, punchline: data.punchline || data.delivery };
-            }
-            return null;
-        }
-    },
-    {
-        name: 'JokeAPIMisc',
-        url: 'https://v2.jokeapi.dev/joke/Misc?blacklistFlags=nsfw,religious,political,racist,sexist,explicit',
-        parser: (data) => {
-            if (data.type === 'single') {
-                return { setup: data.joke, punchline: '' };
-            } else if (data.type === 'twopart') {
-                return { setup: data.setup, punchline: data.punchline || data.delivery };
-            }
-            return null;
-        }
-    }
-];
+// Serverless function endpoint for Gemini API
+const JOKE_API_ENDPOINT = '/api/joke';
+
+// Prevent race conditions - track if a joke is currently being fetched
+let isFetchingJoke = false;
 
 // Fallback jokes when APIs are down
 const FALLBACK_JOKES = [
@@ -142,82 +93,135 @@ function getRandomFallbackJoke() {
     return availableJokes[Math.floor(Math.random() * availableJokes.length)];
 }
 
-async function fetchJokeFromAPI(api) {
+async function fetchJokeFromAPI() {
     try {
-        const options = {
+        const response = await fetch(JOKE_API_ENDPOINT, {
             method: 'GET',
-            headers: api.headers || {}
-        };
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
         
-        const response = await fetch(api.url, options);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
         
         const data = await response.json();
-        const joke = api.parser(data);
         
-        if (joke && joke.setup) {
-            return joke;
+        if (data.error) {
+            console.error('API error:', data.error);
+            return null;
         }
+        
+        if (data.setup) {
+            return {
+                setup: data.setup,
+                punchline: data.punchline || '',
+            };
+        }
+        
         return null;
     } catch (error) {
-        console.error(`Error fetching from ${api.name}:`, error);
+        console.error('Error fetching joke from API:', error);
         return null;
     }
 }
 
 async function getJoke() {
+    // Prevent multiple simultaneous joke fetches
+    if (isFetchingJoke) {
+        return;
+    }
+    
+    isFetchingJoke = true;
+    
+    // Clear any pending punchline timeout
+    clearTimeout(punchlineTimeout);
+
+    // Clear both setup and punchline immediately to prevent showing old content
+    jokeSetupEl.textContent = '';
+    jokePunchlineEl.textContent = '';
+    jokePunchlineEl.classList.remove('visible');
+    
+    // Add loading state and disable button
     giggles.classList.add('telling');
     jokeCard.classList.add('loading');
     getJokeBtn.disabled = true;
     
-    clearTimeout(punchlineTimeout);
-
-    jokePunchlineEl.classList.remove('visible');
-    jokePunchlineEl.textContent = '';
+    // Wait a brief moment for loading state to apply
+    await new Promise(resolve => requestAnimationFrame(resolve));
 
     try {
         let joke = null;
         
-        // Try each API in order until we get a new joke
-        for (const api of JOKE_APIS) {
-            const fetchedJoke = await fetchJokeFromAPI(api);
-            if (fetchedJoke && !isJokeUsed(fetchedJoke)) {
-                joke = fetchedJoke;
-                break;
-            }
+        // Try to fetch a new joke from Gemini API
+        const fetchedJoke = await fetchJokeFromAPI();
+        if (fetchedJoke && !isJokeUsed(fetchedJoke)) {
+            joke = fetchedJoke;
         }
         
-        // If no new joke from APIs, try fallback jokes
+        // If no new joke from API, try fallback jokes
         if (!joke) {
             joke = getRandomFallbackJoke();
         }
         
-        // If still no joke, use any available joke (including used ones)
+        // If still no joke, try fetching again (may get a different joke)
         if (!joke) {
-            const randomAPI = JOKE_APIS[Math.floor(Math.random() * JOKE_APIS.length)];
-            joke = await fetchJokeFromAPI(randomAPI) || getRandomFallbackJoke();
+            joke = await fetchJokeFromAPI() || getRandomFallbackJoke();
         }
         
-        if (joke) {
-            markJokeAsUsed(joke);
-            jokeSetupEl.textContent = joke.setup;
+        // Only update DOM if we're still the active fetch
+        if (isFetchingJoke && joke) {
+            // Remove loading state
+            jokeCard.classList.remove('loading');
             
-            if (joke.punchline) {
-                jokePunchlineEl.textContent = joke.punchline;
-                punchlineTimeout = setTimeout(() => {
-                    jokePunchlineEl.classList.add('visible');
-                }, 1200);
+            // Wait for loading transition to complete (300ms matches CSS transition)
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Double-check we're still the active fetch before updating DOM
+            if (isFetchingJoke) {
+                markJokeAsUsed(joke);
+                
+                // Set setup text first
+                jokeSetupEl.textContent = joke.setup;
+                
+                // Wait for setup to render before handling punchline
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                
+                if (joke.punchline) {
+                    // Set punchline text (hidden initially due to opacity: 0)
+                    jokePunchlineEl.textContent = joke.punchline;
+                    
+                    // Clear any existing timeout before setting a new one
+                    clearTimeout(punchlineTimeout);
+                    
+                    // Show punchline after delay
+                    punchlineTimeout = setTimeout(() => {
+                        // Only show if we're still displaying this joke's punchline
+                        if (jokePunchlineEl.textContent === joke.punchline) {
+                            jokePunchlineEl.classList.add('visible');
+                        }
+                    }, 1200);
+                }
+                
+                // Update counter after joke is successfully displayed
+                updateJokeCounter();
             }
-        } else {
+        } else if (isFetchingJoke) {
+            jokeCard.classList.remove('loading');
             jokeSetupEl.textContent = "Oops! Giggles's joke book is stuck.";
         }
 
     } catch (error) {
         console.error('Error fetching joke:', error);
-        jokeSetupEl.textContent = "Oh no! The joke machine is broken.";
-        jokePunchlineEl.textContent = "Check your internet connection.";
+        if (isFetchingJoke) {
+            jokeCard.classList.remove('loading');
+            jokeSetupEl.textContent = "Oh no! The joke machine is broken.";
+            jokePunchlineEl.textContent = "Check your internet connection.";
+        }
     } finally {
-        jokeCard.classList.remove('loading');
+        isFetchingJoke = false;
         getJokeBtn.disabled = false;
         
         giggles.addEventListener('animationend', () => {
@@ -251,7 +255,7 @@ function updateJokeCounter() {
 
 getJokeBtn.addEventListener('click', () => {
     getJoke();
-    updateJokeCounter();
+    // Counter will be updated inside getJoke() after joke is successfully displayed
 });
 ratingSlider.addEventListener('change', handleRating);
 

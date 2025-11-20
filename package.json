@@ -1,0 +1,27 @@
+{
+  "name": "giggles-joke-factory",
+  "version": "1.0.0",
+  "description": "A fun web app that generates jokes using Google's Gemini AI",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo 'No build step required for static site'",
+    "preview": "node server.js"
+  },
+  "keywords": [
+    "jokes",
+    "gemini",
+    "ai",
+    "pwa"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
