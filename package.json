@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "echo 'No build step required for static site'",
-    "preview": "node server.js"
+    "build": "node scripts/validate-build.js",
+    "preview": "node server.js",
+    "validate": "node scripts/validate-build.js"
   },
   "keywords": [
     "jokes",
