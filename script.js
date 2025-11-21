@@ -16,6 +16,31 @@ const JOKE_API_ENDPOINT = '/api/joke';
 // Prevent race conditions - track if a joke is currently being fetched
 let isFetchingJoke = false;
 
+// Topic categories for dad jokes - provides variety while maintaining consistent style
+const JOKE_TOPICS = [
+    'food',
+    'school',
+    'family',
+    'sports',
+    'animals',
+    'technology',
+    'work',
+    'transportation',
+    'weather',
+    'health',
+    'nature',
+    'music',
+    'science',
+    'everyday'
+];
+
+// Track recent topics/themes (last 20)
+let recentTopics = [];
+const MAX_RECENT_TOPICS = 20;
+
+// Track topic usage for rotation
+let topicIndex = 0;
+
 // Fallback jokes when APIs are down
 const FALLBACK_JOKES = [
     { setup: "Why don't scientists trust atoms?", punchline: "Because they make up everything!" },
@@ -81,21 +106,78 @@ function markJokeAsUsed(joke) {
     const hash = getJokeHash(joke);
     usedJokes.add(hash);
     currentJoke = joke;
+    
+    // Track topic/theme if provided
+    if (joke.topic) {
+        recentTopics.push(joke.topic);
+        // Keep only the most recent topics
+        if (recentTopics.length > MAX_RECENT_TOPICS) {
+            recentTopics.shift();
+        }
+    }
+}
+
+function getNextTopic() {
+    // Rotate through topics systematically
+    const topic = JOKE_TOPICS[topicIndex];
+    topicIndex = (topicIndex + 1) % JOKE_TOPICS.length;
+    return topic;
+}
+
+function extractTopicFromJoke(joke) {
+    // Simple topic extraction - look for common words/patterns
+    const text = (joke.setup + ' ' + joke.punchline).toLowerCase();
+    
+    // Common topic keywords
+    const topicKeywords = {
+        'science': ['atom', 'scientist', 'math', 'physics', 'chemistry', 'biology', 'computer', 'technology'],
+        'food': ['noodle', 'cheese', 'cookie', 'coffee', 'banana', 'tomato', 'food', 'eat', 'cooking'],
+        'animals': ['chicken', 'bear', 'fish', 'dog', 'duck', 'cat', 'whale', 'dinosaur', 'skeleton'],
+        'sports': ['golfer', 'golf', 'sport', 'ball', 'game'],
+        'nature': ['scarecrow', 'snowman', 'tree', 'flower', 'ocean'],
+        'everyday': ['doctor', 'pants', 'bicycle', 'car', 'book', 'opener']
+    };
+    
+    for (const [topic, keywords] of Object.entries(topicKeywords)) {
+        if (keywords.some(keyword => text.includes(keyword))) {
+            return topic;
+        }
+    }
+    
+    return 'general';
 }
 
 function getRandomFallbackJoke() {
     const availableJokes = FALLBACK_JOKES.filter(joke => !isJokeUsed(joke));
+    let selectedJoke;
     if (availableJokes.length === 0) {
         // If all fallback jokes have been used, reset the used jokes set
         usedJokes.clear();
-        return FALLBACK_JOKES[Math.floor(Math.random() * FALLBACK_JOKES.length)];
+        selectedJoke = FALLBACK_JOKES[Math.floor(Math.random() * FALLBACK_JOKES.length)];
+    } else {
+        selectedJoke = availableJokes[Math.floor(Math.random() * availableJokes.length)];
     }
-    return availableJokes[Math.floor(Math.random() * availableJokes.length)];
+    
+    // Add topic to fallback jokes
+    return {
+        ...selectedJoke,
+        topic: extractTopicFromJoke(selectedJoke)
+    };
 }
 
 async function fetchJokeFromAPI() {
     try {
-        const response = await fetch(JOKE_API_ENDPOINT, {
+        // Get next topic and recent topics
+        const topic = getNextTopic();
+        const recentTopicsParam = recentTopics.slice(-15).join(','); // Last 15 topics
+        
+        // Build query parameters
+        const params = new URLSearchParams({
+            topic: topic,
+            ...(recentTopicsParam && { recentTopics: recentTopicsParam })
+        });
+        
+        const response = await fetch(`${JOKE_API_ENDPOINT}?${params.toString()}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -114,10 +196,12 @@ async function fetchJokeFromAPI() {
         }
         
         if (data.setup) {
-            return {
+            const joke = {
                 setup: data.setup,
                 punchline: data.punchline || '',
+                topic: data.topic || topic
             };
+            return joke;
         }
         
         return null;
@@ -182,16 +266,20 @@ async function getJoke() {
             if (isFetchingJoke) {
                 markJokeAsUsed(joke);
                 
-                // Set setup text first
-                jokeSetupEl.textContent = joke.setup;
+                // Ensure we only display text, not objects or JSON
+                const setupText = typeof joke.setup === 'string' ? joke.setup : String(joke.setup || '');
+                const punchlineText = typeof joke.punchline === 'string' ? joke.punchline : String(joke.punchline || '');
+                
+                // Set setup text first (only the text content, never JSON)
+                jokeSetupEl.textContent = setupText;
                 
                 // Wait for setup to render before handling punchline
                 await new Promise(resolve => requestAnimationFrame(resolve));
                 await new Promise(resolve => requestAnimationFrame(resolve));
                 
-                if (joke.punchline) {
+                if (punchlineText) {
                     // Set punchline text (hidden initially due to opacity: 0)
-                    jokePunchlineEl.textContent = joke.punchline;
+                    jokePunchlineEl.textContent = punchlineText;
                     
                     // Clear any existing timeout before setting a new one
                     clearTimeout(punchlineTimeout);
@@ -199,10 +287,13 @@ async function getJoke() {
                     // Show punchline after delay
                     punchlineTimeout = setTimeout(() => {
                         // Only show if we're still displaying this joke's punchline
-                        if (jokePunchlineEl.textContent === joke.punchline) {
+                        if (jokePunchlineEl.textContent === punchlineText) {
                             jokePunchlineEl.classList.add('visible');
                         }
                     }, 1200);
+                } else {
+                    // Clear punchline if empty
+                    jokePunchlineEl.textContent = '';
                 }
                 
                 // Update counter after joke is successfully displayed

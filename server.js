@@ -26,109 +26,75 @@ const mimeTypes = {
   '.woff2': 'font/woff2',
 };
 
-// Import the API handler logic directly
+// Parse URL and query parameters
+function parseUrl(url) {
+  const [pathname, queryString] = url.split('?');
+  const query = {};
+  
+  if (queryString) {
+    queryString.split('&').forEach(param => {
+      const [key, value] = param.split('=');
+      if (key && value) {
+        query[decodeURIComponent(key)] = decodeURIComponent(value);
+      }
+    });
+  }
+  
+  return { pathname, query };
+}
+
+// Import the API handler from the actual file
 async function handleApiRequest(req, res) {
-  if (req.url === '/api/joke' && req.method === 'GET') {
+  const { pathname, query } = parseUrl(req.url);
+  
+  if (pathname === '/api/joke' && req.method === 'GET') {
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-
-      if (!apiKey) {
-        console.error('GEMINI_API_KEY is not set');
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Server configuration error' }));
-        return;
-      }
-
-      // Generate a joke using Gemini API
-      const prompt = `Generate a clean, family-friendly joke. Return the response in JSON format with two fields: "setup" (the joke setup or question) and "punchline" (the punchline or answer). If it's a one-liner, put the entire joke in "setup" and leave "punchline" empty. Make it very funny and appropriate for all ages.`;
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+      // Import the handler function from api/joke.js
+      const { default: handler } = await import('./api/joke.js');
+      
+      // Create mock req/res objects that match Vercel's format
+      const mockReq = {
+        method: req.method,
+        url: req.url,
+        query: query, // Add parsed query parameters
+        headers: req.headers,
+      };
+      
+      const mockRes = {
+        setHeader: (name, value) => {
+          // Store headers for later use
+          if (!mockRes._headers) mockRes._headers = {};
+          mockRes._headers[name] = value;
+        },
+        status: (code) => ({
+          json: (data) => {
+            const headers = { 'Content-Type': 'application/json', ...mockRes._headers };
+            res.writeHead(code, headers);
+            res.end(JSON.stringify(data));
           },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-          }),
+          end: () => {
+            const headers = { ...mockRes._headers };
+            res.writeHead(code, headers);
+            res.end();
+          }
+        }),
+        json: (data) => {
+          const headers = { 'Content-Type': 'application/json', ...mockRes._headers };
+          res.writeHead(200, headers);
+          res.end(JSON.stringify(data));
+        },
+        end: () => {
+          const headers = { ...mockRes._headers };
+          res.writeHead(200, headers);
+          res.end();
         }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Gemini API error:', errorText);
-        res.writeHead(response.status, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          error: 'Failed to generate joke',
-          details: errorText 
-        }));
-        return;
-      }
-
-      const data = await response.json();
+      };
       
-      // Extract the generated text from Gemini response
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      
-      if (!generatedText) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'No joke generated' }));
-        return;
-      }
-
-      // Try to parse JSON from the response, or extract joke parts
-      let joke;
-      try {
-        // Try to parse as JSON first
-        joke = JSON.parse(generatedText);
-      } catch {
-        // If not JSON, try to extract setup and punchline from text
-        // Look for common patterns like "Q: ... A: ..." or split by newlines
-        const lines = generatedText.split('\n').filter(line => line.trim());
-        
-        if (lines.length >= 2) {
-          joke = {
-            setup: lines[0].replace(/^(Q:|Question:)\s*/i, '').trim(),
-            punchline: lines.slice(1).join(' ').replace(/^(A:|Answer:)\s*/i, '').trim(),
-          };
-        } else {
-          // Single line joke
-          joke = {
-            setup: generatedText.trim(),
-            punchline: '',
-          };
-        }
-      }
-
-      // Ensure we have the expected format
-      if (!joke.setup) {
-        joke = {
-          setup: generatedText.trim(),
-          punchline: joke.punchline || '',
-        };
-      }
-
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        setup: joke.setup,
-        punchline: joke.punchline || '',
-      }));
+      await handler(mockReq, mockRes);
     } catch (error) {
-      console.error('Error generating joke:', error);
+      console.error('API handler error:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ 
-        error: 'Failed to generate joke',
-        message: error.message 
-      }));
+      res.end(JSON.stringify({ error: 'Internal server error', message: error.message }));
     }
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json' });
