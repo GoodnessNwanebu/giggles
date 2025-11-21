@@ -139,32 +139,55 @@ export default async function handler(req, res) {
 
 // Build enhanced prompt with examples, style instructions, and context
 function buildEnhancedPrompt(topic, recentTopics) {
-  // Examples of great dad jokes - short, clever, groan-worthy
-  const examples = [
+  // Examples of GREAT jokes - clever, surprising, genuinely funny
+  const goodExamples = [
     {
       setup: "I told my wife she was drawing her eyebrows too high.",
       punchline: "She looked surprised.",
-      note: "Clever wordplay with double meaning - short and punchy"
+      note: "Clever wordplay with double meaning - misdirection that surprises"
     },
     {
-      setup: "Why don't eggs tell jokes?",
-      punchline: "They'd crack each other up!",
-      note: "Simple pun, easy to understand, makes you groan"
+      setup: "Why don't scientists trust atoms?",
+      punchline: "Because they make up everything!",
+      note: "Wordplay on 'make up' meaning both 'compose' and 'lie' - clever twist"
     },
     {
       setup: "I'm reading a book about anti-gravity.",
       punchline: "It's impossible to put down!",
-      note: "Literal interpretation of a common phrase - clever and short"
+      note: "Literal interpretation of a common phrase - surprising and clever"
     },
     {
-      setup: "What do you call a fake noodle?",
-      punchline: "An impasta!",
-      note: "Perfect dad joke - pun, short, groan-worthy but funny"
+      setup: "What do you call a fish with no eyes?",
+      punchline: "Fsh.",
+      note: "Unexpected answer that makes you think - clever wordplay"
     }
   ];
 
-  const examplesText = examples.map((ex, i) => {
-    return `${i + 1}. Setup: "${ex.setup}"\n   Punchline: "${ex.punchline}"\n   Why it works: ${ex.note}`;
+  // Examples of BAD jokes - what to avoid
+  const badExamples = [
+    {
+      setup: "What do you call a bear with no teeth?",
+      punchline: "A gummy bear.",
+      note: "Too simple, predictable, childish - not clever enough"
+    },
+    {
+      setup: "What did one wall say to the other wall?",
+      punchline: "I'll meet you at the corner.",
+      note: "Overused, not surprising, lacks cleverness"
+    },
+    {
+      setup: "Why did the chicken cross the road?",
+      punchline: "To get to the other side.",
+      note: "Cliché, everyone knows it, zero surprise factor"
+    }
+  ];
+
+  const goodExamplesText = goodExamples.map((ex, i) => {
+    return `${i + 1}. Setup: "${ex.setup}"\n   Punchline: "${ex.punchline}"\n   Why it's great: ${ex.note}`;
+  }).join('\n\n');
+
+  const badExamplesText = badExamples.map((ex, i) => {
+    return `${i + 1}. Setup: "${ex.setup}"\n   Punchline: "${ex.punchline}"\n   Why it's weak: ${ex.note}`;
   }).join('\n\n');
 
   // Topic-specific context
@@ -187,29 +210,37 @@ function buildEnhancedPrompt(topic, recentTopics) {
 
   const topicDescription = topicContext[topic] || 'about everyday life';
 
-  let prompt = `You are a master of dad jokes. Generate a SHORT, FUNNY dad joke ${topicDescription} that is:
+  let prompt = `You are an expert, highly-rated comedy writer specializing in short, witty, and universally funny jokes. Your goal is to generate jokes that are genuinely VERY FUNNY and will make users laugh most of the time.
+
+Generate a SHORT, CLEVER joke ${topicDescription} that is:
 
 CRITICAL REQUIREMENTS:
 - KEEP IT SHORT: Maximum 2 sentences total (setup + punchline, or a one-liner)
-- DAD JOKE STYLE: Cheesy, whole
-- EASILY DIGESTIBLE: Simple to understand, groan-worthy, but genuinely funny
+- GENUINELY VERY FUNNY: Must be clever enough to elicit a real laugh, not just a groan
+- CLEVER TECHNIQUES: Use misdirection, irony, surprising twists, or clever wordplay (not just simple puns)
+- EASILY DIGESTIBLE: Simple to understand, no complex setups
 - FAMILY-FRIENDLY: Appropriate for all ages
-- AVOID CLICHÉS: No overused joke formats like "Why did the chicken cross the road?"
+- AVOID CLICHÉS: No overused joke formats or predictable patterns
 
-WHAT MAKES A GREAT DAD JOKE:
+WHAT MAKES A GREAT JOKE:
+- Clever wordplay, misdirection, or irony that surprises
+- Unexpected but logical connection between setup and punchline
 - Short and punchy (one-liner or quick setup/punchline)
-- Clever wordplay that makes you fall to the ground laughing
 - Relatable and easy to understand
-- The kind that makes you say "oh dad..." but laugh anyway
+- The kind that makes you think "oh that's clever!" and laugh
+- Quality over quantity - aim for 70%+ laugh rate
 
-EXAMPLES OF PERFECT DAD JOKES:
-${examplesText}
+EXAMPLES OF GREAT JOKES (Target Quality):
+${goodExamplesText}
+
+EXAMPLES OF WEAK JOKES (Avoid These):
+${badExamplesText}
 
 `;
 
   // Add context about recent topics to avoid
   if (recentTopics.length > 0) {
-    prompt += `CONTEXT - Avoid these recently used topics: ${recentTopics.join(', ')}\nTry a different angle or topic to ensure variety.\n\n`;
+    prompt += `CONTEXT - Avoid these recently used topics: ${recentTopics.join(', ')}\nTry a different angle or topic to ensure variety. Also vary the humor technique used (misdirection, irony, wordplay, etc.).\n\n`;
   }
 
   prompt += `Return your response in JSON format with these fields:
@@ -219,13 +250,13 @@ ${examplesText}
 
 IMPORTANT RULES: 
 - If it's a one-liner, put the entire joke in "setup" and leave "punchline" as an empty string
-- Keep the total joke under 2 sentences - brevity is key for dad jokes
-- Make it genuinely funny with clever wordplay
-- The joke should make people groan but can't help laughing
-- Focus on puns, wordplay, or clever literal interpretations
-- Make it the kind of joke a dad would tell - cheesy but clever
+- Keep the total joke under 2 sentences - brevity is key
+- Make it GENUINELY VERY FUNNY - aim for quality that makes users laugh most of the time
+- Use clever techniques: misdirection, irony, surprising twists, or sophisticated wordplay
+- Avoid simple puns or predictable patterns - be clever and surprising
+- The joke should make people think "that's brilliant!" not just "that's a pun"
 
-Now generate a short, funny dad joke about ${topicDescription}:`;
+Now generate a short, clever, VERY FUNNY joke about ${topicDescription}:`;
 
   return prompt;
 }
